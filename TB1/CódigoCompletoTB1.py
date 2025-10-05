@@ -1,9 +1,9 @@
-#Descarga y procesamiento de la red vial real de San Juan de Lurigancho (OSM)
+# Descarga y procesamiento de la red vial real de San Juan de Lurigancho (OSM)
 # Librerías permitidas
-import osmnx as ox              # Solo para descargar datos de OpenStreetMap
-import pandas as pd             # Para guardar CSVs
-from graphviz import Graph      # Para visualizaciones sencillas
-from collections import deque   # Para la implementación de BFS (cola)
+import osmnx as ox  # Solo para descargar datos de OpenStreetMap
+import pandas as pd  # Para guardar CSVs
+from graphviz import Graph  # Para visualizaciones sencillas
+from collections import deque  # Para la implementación de BFS (cola)
 import random
 
 # Configuración
@@ -34,14 +34,16 @@ except Exception as e:
 # Parámetros de conversión distancia -> tiempo
 velocidad_kmh = 30.0  # velocidad promedio urbana
 
+
 def metros_a_minutos(dist_m):
     """Convierte distancia en metros a tiempo en minutos"""
     distancia_km = dist_m / 1000.0
     minutos = (distancia_km / velocidad_kmh) * 60.0
     return round(minutos, 2)
 
+
 # Construimos:
-# - nodos_info: dict con coordenadas { nodo_id: (longitud, latitud) }
+# - nodos_info: diccionario con coordenadas { nodo_id: (longitud, latitud) }
 # - lista_ady: diccionario de adyacencia { nodo: [(vecino, length, tiempo), ...], ... }
 nodos_info = {}
 lista_ady = {}
@@ -67,14 +69,14 @@ for u, v, key, data in grafo_osm.edges(data=True, keys=True):
     if length is None:
         # Si falta longitud, asignamos valor por defecto (100 m)
         length = 100.0
-    
+
     # Convertimos distancia a tiempo
     tiempo = metros_a_minutos(length)
-    
+
     # Añadimos la arista a la lista de adyacencia
     # Formato: lista_ady[u] = [(vecino, distancia, tiempo), ...]
     lista_ady[u].append((v, float(length), tiempo))
-    
+
     # Verificamos si la calle es de doble sentido
     oneway = data.get('oneway', None)
     # Si no es de un solo sentido, añadimos también la arista opuesta
@@ -92,6 +94,7 @@ num_aristas = num_aristas // 2  # Dividimos entre 2 porque contamos cada arista 
 
 print(f"Aristas aproximadas: {num_aristas}\n")
 
+
 # 3. Conectividad: obtener componente gigante (BFS)
 #    - Implementación BFS (cola)
 
@@ -103,7 +106,7 @@ def BFS_componente(grafo_adj, inicio):
     visitados = set()
     colaAuxiliar = deque([inicio])
     visitados.add(inicio)
-    
+
     while colaAuxiliar:
         nodo = colaAuxiliar.popleft()
         # Recorremos todos los vecinos del nodo actual
@@ -112,8 +115,9 @@ def BFS_componente(grafo_adj, inicio):
             if vecino not in visitados:
                 colaAuxiliar.append(vecino)
                 visitados.add(vecino)
-    
+
     return visitados
+
 
 # Revisar conectividad general iterando componentes
 print("Verificar componentes conexas con BFS...")
@@ -161,7 +165,7 @@ if len(componentes) <= 1:
 else:
     print(f"Grafo con {len(componentes)} componentes. Usaremos el componente principal (el mayor).")
     print(f"Tamaño componente principal: {len(componente_principal)} nodos")
-    
+
     # Reducir lista de adyacencia al componente principal
     # Paso 1: Crear nueva lista de adyacencia solo con nodos del componente principal
     nueva_lista_ady = {}
@@ -175,18 +179,18 @@ else:
             # Solo agregamos el vecino si también está en el componente principal
             if vecino in componente_principal:
                 nueva_lista_ady[nodo].append((vecino, length, tiempo))
-    
+
     # Reemplazamos la lista de adyacencia
     lista_ady = nueva_lista_ady
-    
+
     # Paso 2: Actualizar nodos_info solo con nodos del componente principal
     nueva_nodos_info = {}
     for nodo in componente_principal:
         nueva_nodos_info[nodo] = nodos_info[nodo]
-    
+
     nodos_info = nueva_nodos_info
 
-# 4. Guardar CSVs de aristas y nodos
+# 4. Guardar CSVs de aristas y nodos 
 print("\nGuardando archivos CSV (aristas y nodos)...")
 
 # Aristas: para evitar duplicados en grafo no dirigido, almacenamos pares u<v
@@ -200,18 +204,18 @@ for u in lista_ady:
         v = vecino_info[0]
         length = vecino_info[1]
         tiempo = vecino_info[2]
-        
+
         # Usar par ordenado para evitar duplicados (u,v) y (v,u)
         if u <= v:
             par = (u, v)
         else:
             par = (v, u)
-        
+
         # Si ya procesamos este par, lo saltamos
         if par in visto:
             continue
         visto.add(par)
-        
+
         # Intentamos obtener nombre de la calle desde grafo_osm
         nombre = None
         try:
@@ -225,11 +229,11 @@ for u in lista_ady:
                     nombre = first.get('name', None)
         except Exception:
             nombre = None
-        
+
         # Si no tiene nombre, ponemos "Sin nombre"
         if nombre is None:
             nombre = 'Sin nombre'
-        
+
         # Agregamos la arista a nuestra lista
         aristas_reg.append({
             'origen': par[0],
@@ -250,7 +254,7 @@ for nodo in nodos_info:
     coordenadas = nodos_info[nodo]
     x = coordenadas[0]  # longitud
     y = coordenadas[1]  # latitud
-    
+
     nodos_reg.append({
         'nodo_id': nodo,
         'latitud': y,
@@ -269,6 +273,7 @@ print("\nGenerando visualizaciones...")
 print("Generando mapa completo de SJL...")
 try:
     import matplotlib.pyplot as plt
+
     fig, ax = plt.subplots(figsize=(15, 15), facecolor='white')
     ox.plot_graph(grafo_osm, ax=ax, node_size=5, node_color='blue', node_alpha=0.4,
                   edge_color='gray', edge_linewidth=0.5, bgcolor='white', show=False, close=False)
@@ -294,32 +299,32 @@ else:
     lista_nodos = []
     for nodo in lista_ady.keys():
         lista_nodos.append(nodo)
-    
+
     nodo_inicio = random.choice(lista_nodos)
     subgrafo_nodos = []
     colaAuxiliar = deque([nodo_inicio])
     visitados_local = set([nodo_inicio])
-    
+
     # BFS para obtener 100 nodos
     while len(colaAuxiliar) > 0 and len(subgrafo_nodos) < 100:
         nodo = colaAuxiliar.popleft()
         subgrafo_nodos.append(nodo)
-        
+
         # Obtener vecinos del nodo actual
         vecinos = []
         for vecino_info in lista_ady.get(nodo, []):
             vecino = vecino_info[0]
             vecinos.append(vecino)
-        
+
         # Mezclar vecinos aleatoriamente
         random.shuffle(vecinos)
-        
+
         # Agregar vecinos no visitados a la cola
         for vec in vecinos:
             if vec not in visitados_local and len(subgrafo_nodos) + len(colaAuxiliar) < 1000:
                 visitados_local.add(vec)
                 colaAuxiliar.append(vec)
-    
+
     # Si aún faltan nodos, completar aleatoriamente
     if len(subgrafo_nodos) < 100:
         faltan = 100 - len(subgrafo_nodos)
@@ -327,7 +332,7 @@ else:
         for n in lista_ady.keys():
             if n not in subgrafo_nodos:
                 extras.append(n)
-        
+
         random.shuffle(extras)
         # Agregar los nodos faltantes
         for i in range(min(faltan, len(extras))):
@@ -355,7 +360,7 @@ g = Graph('Subgrafo_100_SJL', format='png')
 
 # Configurar tamaño y orientación del documento
 g.attr(size='8,10')  # Ancho de 8 pulgadas, alto de 10 pulgadas
-g.attr(dpi='150')    # Resolución moderada
+g.attr(dpi='300')  # Resolución moderada
 g.attr(ratio='compress')  # Comprimir para ajustar mejor
 
 # Agregar nodos al grafo con etiquetas visibles
@@ -371,18 +376,18 @@ for u in subgrafo_ady:
         v = vecino_info[0]
         length = vecino_info[1]
         tiempo = vecino_info[2]
-        
+
         # Crear par ordenado para evitar duplicados
         if str(u) <= str(v):
             par = (u, v)
         else:
             par = (v, u)
-        
+
         # Si ya agregamos esta arista, la saltamos
         if par in agregado:
             continue
         agregado.add(par)
-        
+
         # Etiqueta con distancia en metros
         etiqueta = f"{int(length)} m"
         g.edge(str(par[0]), str(par[1]), label=etiqueta)
@@ -428,7 +433,7 @@ print(f"Total de intersecciones (nodos): {total_nodos}")
 print(f" Total de calles (aristas, aprox): {int(total_aristas)}")
 
 if len(componentes) == 1:
-    print(f"Conectividad: Conectado (componente principal usado)")
+    print(f"   • Conectividad: Conectado (componente principal usado)")
 else:
     print(f"Conectividad: No completamente conectado — se usó componente principal")
 
@@ -440,4 +445,3 @@ print("grafo_sjl_osm.csv")
 print("nodos_sjl_osm.csv")
 print("red_completa_sjl.png")
 print("subgrafo_100_sjl_osm.png\n")
-
